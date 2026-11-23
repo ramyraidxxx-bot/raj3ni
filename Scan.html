@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raj3ni</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:24px;text-align:center}
+  h1{font-size:22px;margin:16px 0 24px}
+  button{display:block;width:100%;padding:18px;margin:12px 0;font-size:18px;border:0;border-radius:14px;background:#2d6cdf;color:#fff}
+  button:disabled{opacity:.5}
+  #msg{margin-top:24px;font-size:18px}
+</style>
+</head>
+<body>
+<h1>شنو المشكلة؟</h1>
+<div id="buttons">
+  <button data-m="سيارتك تسد الطريق">🚧 سيارتك تسد الطريق</button>
+  <button data-m="أضواء السيارة شغالة">💡 الأضواء شغالة</button>
+  <button data-m="في مشكلة بالسيارة">⚠️ في مشكلة بالسيارة</button>
+  <button data-m="أريد أكلمك بخصوص السيارة">💬 أريد أكلمك</button>
+</div>
+<div id="msg"></div>
+
+<script>
+const SUPABASE_URL = "https://rvuxucwjzyqtcpyoasmt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_vA5VPbtuUos49Pur6fWyUw_jVnKIsuv";
+
+const itemId = new URLSearchParams(location.search).get("item");
+const msg = document.getElementById("msg");
+
+document.querySelectorAll("button").forEach(b => {
+  b.onclick = async () => {
+    if (!itemId) { msg.textContent = "الرابط ناقص، امسح الـ QR مرة ثانية"; return; }
+    document.querySelectorAll("button").forEach(x => x.disabled = true);
+    msg.textContent = "جاري الإرسال...";
+    try {
+      const r = await fetch(SUPABASE_URL + "/rest/v1/alerts", {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({ item_id: itemId, message: b.dataset.m })
+      });
+      if (!r.ok) throw new Error(await r.text());
+      document.getElementById("buttons").style.display = "none";
+      msg.textContent = "✅ انرسلت للصاحب، شكراً";
+    } catch (e) {
+      msg.textContent = "صار خطأ، حاول مرة ثانية";
+      document.querySelectorAll("button").forEach(x => x.disabled = false);
+      console.error(e);
+    }
+  };
+});
+</script>
+</body>
+</html>
