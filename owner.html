@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raj3ni - الصاحب</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:24px}
+  input,button{display:block;width:100%;box-sizing:border-box;padding:14px;margin:10px 0;font-size:17px;border-radius:12px;border:0}
+  input{background:#222;color:#fff}
+  button{background:#2d6cdf;color:#fff}
+  .a{background:#1c1c1c;padding:12px;border-radius:12px;margin:10px 0}
+  small{color:#999}
+  #app{display:none}
+</style>
+</head>
+<body>
+<div id="login">
+  <h2>دخول</h2>
+  <input id="email" type="email" placeholder="الإيميل">
+  <input id="pass" type="password" placeholder="الباسورد">
+  <button id="go">دخول</button>
+</div>
+<div id="app">
+  <button id="notif">🔔 فعّل الإشعارات</button>
+  <h3>التنبيهات</h3>
+  <div id="list"></div>
+</div>
+<div id="msg"></div>
+
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+const URL_ = "https://rvuxucwjzyqtcpyoasmt.supabase.co";
+const KEY = "sb_publishable_vA5VPbtuUos49Pur6fWyUw_jVnKIsuv";
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal){
+  await OneSignal.init({ appId: "a13ae15e-4215-428e-9f03-8f362eb761bd" });
+});
+const $ = id => document.getElementById(id);
+let userId = null;
+
+$("go").onclick = async () => {
+  $("msg").textContent = "جاري الدخول...";
+  try {
+    const r = await fetch(URL_ + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: $("email").value.trim(), password: $("pass").value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error_description || d.msg || "خطأ");
+    userId = d.user.id;
+    $("login").style.display = "none";
+    $("app").style.display = "block";
+    $("msg").textContent = "";
+    OneSignalDeferred.push(async function(OneSignal){ await OneSignal.login(userId); });
+    const a = await fetch(URL_ + "/rest/v1/alerts?select=message,created_at&order=created_at.desc&limit=30", {
+      headers: { "apikey": KEY, "Authorization": "Bearer " + d.access_token }
+    });
+    const rows = await a.json();
+    $("list").innerHTML = rows.length ? rows.map(x =>
+      '<div class="a">' + x.message + '<br><small>' + new Date(x.created_at).toLocaleString("ar-IQ") + '</small></div>'
+    ).join("") : "ما أكو تنبيهات";
+  } catch (e) {
+    $("msg").textContent = "فشل الدخول: " + e.message;
+  }
+};
+
+$("notif").onclick = () => {
+  OneSignalDeferred.push(async function(OneSignal){
+    await OneSignal.Notifications.requestPermission();
+    $("msg").textContent = OneSignal.Notifications.permission ? "✅ الإشعارات شغالة" : "ما انسمح بالإشعارات";
+  });
+};
+</script>
+</body>
+</html>
