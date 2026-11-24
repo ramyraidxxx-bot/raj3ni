@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raj3ni - أضف سيارتي</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:24px}
+  input,button{display:block;width:100%;box-sizing:border-box;padding:14px;margin:10px 0;font-size:17px;border-radius:12px;border:0}
+  input{background:#222;color:#fff}
+  button{background:#2d6cdf;color:#fff}
+  .c{background:#1c1c1c;padding:16px;border-radius:12px;margin:14px 0;text-align:center}
+  .c img{width:220px;height:220px;background:#fff;padding:8px;border-radius:8px}
+  #app{display:none}
+</style>
+</head>
+<body>
+<div id="login">
+  <h2>دخول</h2>
+  <input id="email" type="email" placeholder="الإيميل">
+  <input id="pass" type="password" placeholder="الباسورد">
+  <button id="go">دخول</button>
+</div>
+<div id="app">
+  <h2>أضف سيارتي 🚗</h2>
+  <input id="label" placeholder="اسم السيارة (مثلاً: كامري بيضاء)">
+  <button id="add">أضف وطلّع الـ QR</button>
+  <h3>سياراتي</h3>
+  <div id="list"></div>
+</div>
+<div id="msg"></div>
+
+<script>
+const URL_ = "https://rvuxucwjzyqtcpyoasmt.supabase.co";
+const KEY = "sb_publishable_vA5VPbtuUos49Pur6fWyUw_jVnKIsuv";
+const SCAN = "https://raj3ni.vercel.app/Scan.html?item=";
+const $ = id => document.getElementById(id);
+let token = null, userId = null;
+
+const qr = id => "https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=" + encodeURIComponent(SCAN + id);
+const esc = s => String(s || "").replace(/[&<>"']/g, c => "&#" + c.charCodeAt(0) + ";");
+const H = () => ({ "apikey": KEY, "Authorization": "Bearer " + token, "Content-Type": "application/json" });
+
+async function load() {
+  const r = await fetch(URL_ + "/rest/v1/items?select=id,label&order=created_at.desc", { headers: H() });
+  const rows = await r.json();
+  if (!r.ok) { $("list").textContent = "خطأ: " + (rows.message || ""); return; }
+  $("list").innerHTML = rows.length ? rows.map(x =>
+    '<div class="c"><img src="' + qr(x.id) + '"><h3>' + esc(x.label) + '</h3>' +
+    '<a href="' + qr(x.id) + '" target="_blank"><button>⬇️ افتح صورة الـ QR واحفظها</button></a>' +
+    '<a href="' + SCAN + x.id + '" target="_blank"><button style="background:#333">🔗 جرّب رابط المسح</button></a></div>'
+  ).join("") : "ما عندك سيارات بعد";
+}
+
+$("go").onclick = async () => {
+  $("msg").textContent = "جاري الدخول...";
+  try {
+    const r = await fetch(URL_ + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "apikey": KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: $("email").value.trim(), password: $("pass").value })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error_description || d.msg || "خطأ");
+    token = d.access_token; userId = d.user.id;
+    $("login").style.display = "none";
+    $("app").style.display = "block";
+    $("msg").textContent = "";
+    load();
+  } catch (e) { $("msg").textContent = "فشل الدخول: " + e.message; }
+};
+
+$("add").onclick = async () => {
+  const label = $("label").value.trim();
+  if (!label) { $("msg").textContent = "اكتب اسم السيارة"; return; }
+  $("msg").textContent = "جاري الإضافة...";
+  const code = Math.random().toString(16).slice(2, 10);
+  const r = await fetch(URL_ + "/rest/v1/items", {
+    method: "POST", headers: { ...H(), "Prefer": "return=minimal" },
+    body: JSON.stringify({ code, owner_id: userId, kind: "car", label })
+  });
+  if (!r.ok) { $("msg").textContent = "خطأ: " + await r.text(); return; }
+  $("label").value = "";
+  $("msg").textContent = "✅ انضافت";
+  load();
+};
+</script>
+</body>
+</html>
