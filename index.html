@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raj3ni - رجّعني</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:24px;line-height:1.6}
+  input,.btn{display:block;width:100%;box-sizing:border-box;padding:14px;margin:10px 0;font-size:17px;border-radius:12px;border:0;text-align:center;text-decoration:none}
+  input{background:#222;color:#fff;text-align:right}
+  .btn{background:#2d6cdf;color:#fff;cursor:pointer}
+  .gray{background:#333}
+  .box{background:#1c1c1c;padding:18px;border-radius:14px;margin:16px 0}
+  h1{margin:0 0 6px;font-size:30px}
+  #done{display:none}
+  #msg{margin-top:10px}
+</style>
+</head>
+<body>
+<h1>Raj3ni 🚗</h1>
+<p>حط كود QR على زجاج سيارتك، وأي شخص يكدر يبلغك إذا سيارتك ساده الطريق أو بيها مشكلة، بدون ما يشوف رقمك وبدون ما تشوف رقمه.</p>
+
+<div class="box" id="signup">
+  <h2>حساب جديد</h2>
+  <input id="email" type="email" placeholder="الإيميل">
+  <input id="pass" type="password" placeholder="الباسورد (6 أحرف أو أكثر)">
+  <input id="pass2" type="password" placeholder="أعد كتابة الباسورد">
+  <button class="btn" id="go">إنشاء حساب</button>
+  <div id="msg"></div>
+</div>
+
+<div class="box" id="done">
+  <h2>✅ انسوى حسابك</h2>
+  <p>هسه سوي هالخطوتين:</p>
+  <a class="btn" href="add.html">1️⃣ أضف سيارتك وطلّع الـ QR</a>
+  <a class="btn" href="owner.html">2️⃣ فعّل الإشعارات</a>
+</div>
+
+<div class="box">
+  <h2>عندك حساب؟</h2>
+  <a class="btn gray" href="add.html">🚗 سياراتي والـ QR</a>
+  <a class="btn gray" href="owner.html">🔔 التنبيهات</a>
+</div>
+
+<script>
+const URL_ = "https://rvuxucwjzyqtcpyoasmt.supabase.co";
+const KEY = "sb_publishable_vA5VPbtuUos49Pur6fWyUw_jVnKIsuv";
+const $ = id => document.getElementById(id);
+
+$("go").onclick = async () => {
+  const email = $("email").value.trim(), pass = $("pass").value;
+  if (!email || pass.length < 6) { $("msg").textContent = "اكتب الإيميل وباسورد 6 أحرف أو أكثر"; return; }
+  if (pass !== $("pass2").value) { $("msg").textContent = "الباسوردين مو نفس الشي"; return; }
+  $("msg").textContent = "جاري إنشاء الحساب...";
+  try {
+    const r = await fetch(URL_ + "/auth/v1/signup", {
+      method: "POST",
+      headers: { "apikey": KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.msg || d.error_description || "خطأ");
+    if (d.access_token) {
+      $("signup").style.display = "none";
+      $("done").style.display = "block";
+    } else {
+      $("msg").textContent = "📧 دزينالك رسالة على الإيميل، افتحها واضغط الرابط حتى يتفعل حسابك، وبعدين سجل دخول.";
+    }
+  } catch (e) {
+    $("msg").textContent = e.message.includes("registered") ? "هذا الإيميل عنده حساب، سجل دخول من الأسفل" : "صار خطأ: " + e.message;
+  }
+};
+</script>
+</body>
+</html>
